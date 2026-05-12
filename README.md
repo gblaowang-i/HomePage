@@ -1,42 +1,37 @@
 # 家用导航中心（Docker 部署）
 
-## 运行方式一：Docker Compose（推荐）
+## 快速部署（推荐）
 
-1. 修改 `compose.yml` 里的 `ADMIN_PASSWORD`
-2. 在项目目录执行：
+1. 修改 `compose.yml` 中的后台密码：
+
+```yml
+ADMIN_PASSWORD: "你的密码"
+```
+
+2. 启动服务：
 
 ```bash
 docker compose up -d --build
 ```
 
-打开：
+3. 访问：
 - 前台：`http://localhost:3000/`
 - 后台：`http://localhost:3000/admin/login.html`
 
-数据已通过 **named volume** 持久化（容器重建不丢数据）。
-
-## 运行方式二：Docker
-
-构建镜像：
+## 常用命令
 
 ```bash
-docker build -t home-nav:latest .
+# 查看运行状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
 ```
 
-运行容器（并持久化数据）：
+## 说明
 
-```bash
-docker run -d --name home-nav ^
-  -p 3000:3000 ^
-  -e ADMIN_PASSWORD=123456 ^
-  -e DATA_FILE=/data/data.json ^
-  -v home_nav_data:/data ^
-  home-nav:latest
-```
-
-## 配置
-
-- **后台密码**：环境变量 `ADMIN_PASSWORD`（默认 `123456`）
-- **端口**：环境变量 `PORT`（默认 `3000`）
-- **数据文件路径**：环境变量 `DATA_FILE`（默认 `./data.json`）
+- 当前使用 `./data.json:/app/data.json` 挂载，数据可持久化。
 

@@ -1,18 +1,11 @@
 services:
   nav-center:
+    container_name: nav-center
     build: .
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      # 修改成你的后台密码
       ADMIN_PASSWORD: "123456"
-      PORT: "3000"
-      # 数据文件路径（配合 volume 持久化）
-      DATA_FILE: "/data/data.json"
-    # 持久化 data.json（容器重建不丢数据）
     volumes:
-      - nav_data:/data
-
-volumes:
-  nav_data:
-
+      - ./data.json:/app/data.json
