@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>家用导航中心</title>
+    <script>
+      (function () {
+        try {
+          var key = localStorage.getItem("home_tone_preset") || "graywhite";
+          document.documentElement.dataset.theme = key;
+        } catch (e) {
+          document.documentElement.dataset.theme = "graywhite";
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
