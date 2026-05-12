@@ -60,7 +60,10 @@ body {
   color: var(--text);
   background: var(--bg-grad);
   background-attachment: fixed;
-  overflow: hidden;
+  /* 禁止横向溢出；纵向允许滚动（原先 overflow:hidden 会导致手机/平板无法上下滑动） */
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bg-layer {
