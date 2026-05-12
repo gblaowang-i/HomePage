@@ -1,0 +1,13 @@
+**/.git
+**/.github
+**/.vscode
+**/.idea
+**/node_modules
+**/dist
+**/build
+**/*.log
+**/.DS_Store
+**/thumbs.db
+**/agent-transcripts
+**/terminals
+

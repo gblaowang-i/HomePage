@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>家用导航中心</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="bg-layer"></div>
+    <main class="shell">
+      <header class="hero">
+        <div class="hero-actions">
+          <select id="toneSelect" class="tone-select" aria-label="色彩风格"></select>
+          <a class="admin-entry" href="/admin/login.html">后台管理</a>
+        </div>
+        <h1 id="siteTitle">家用导航中心</h1>
+      </header>
+
+      <section id="categoryBar" class="category-bar"></section>
+
+      <section class="grid-container">
+        <div id="linkGrid" class="link-grid"></div>
+      </section>
+    </main>
+    <script src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>导航管理后台</title>
+    <style>
+      :root { --r: 16px; --card: 14px; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        color: #0f172a;
+        background: #f6f7fb;
+        min-height: 100vh;
+      }
+      .page {
+        width: min(1000px, 94vw);
+        margin: 20px auto;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 12px;
+      }
+      .panel {
+        border-radius: var(--r);
+        background: #ffffff;
+        border: 1px solid #e6e8ef;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        padding: 16px;
+      }
+      h2, h3 { margin-top: 0; }
+      label { display: block; margin-top: 10px; font-size: 13px; color: #475569; }
+      input {
+        width: 100%;
+        margin-top: 6px;
+        border: 1px solid #d6d9e2;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      input[type="file"] {
+        padding: 8px;
+      }
+      input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      }
+      button {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+      .actions { margin-top: 12px; display: flex; gap: 8px; }
+      .btn-main { background: #2563eb; color: #fff; }
+      .btn-muted { background: #eef2ff; color: #1e293b; border-color: #dbe1ff; }
+      .list {
+        display: grid;
+        gap: 8px;
+      }
+      .item {
+        border-radius: var(--card);
+        background: #f8fafc;
+        border: 1px solid #e6e8ef;
+        padding: 12px;
+        display: grid;
+        grid-template-columns: 40px 1fr auto;
+        gap: 12px;
+        align-items: center;
+      }
+      .item img {
+        width: 36px;
+        height: 36px;
+        filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18));
+      }
+      .ops { display: flex; gap: 6px; }
+      .msg { min-height: 22px; color: #b91c1c; margin-top: 8px; }
+      .icon-upload-row {
+        margin-top: 8px;
+      }
+      .icon-preview {
+        margin-top: 8px;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        object-fit: contain;
+        display: none;
+      }
+      @media (max-width: 860px) {
+        .page { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <h2>站点设置</h2>
+        <form id="settingsForm">
+          <label>主页标题 <input id="siteTitleInput" placeholder="例如：家用导航中心" /></label>
+          <div class="actions">
+            <button class="btn-main" type="submit">保存标题</button>
+          </div>
+          <div id="settingsMsg" class="msg"></div>
+        </form>
+
+        <hr style="border: none; border-top: 1px solid #e6e8ef; margin: 16px 0;" />
+
+        <h2>链接编辑</h2>
+        <form id="linkForm">
+          <input id="id" type="hidden" />
+          <label>名称 <input id="name" required /></label>
+          <label>URL <input id="url" type="url" required /></label>
+          <label>图标 URL/路径 <input id="icon" required /></label>
+          <div class="icon-upload-row">
+            <label>或上传本地图标
+              <input id="iconFile" type="file" accept="image/*,.svg" />
+            </label>
+            <img id="iconPreview" class="icon-preview" alt="图标预览" />
+          </div>
+          <label>分类 <input id="category" placeholder="例如：存储 / 影视 / 办公" /></label>
+          <label>排序序号 <input id="order" type="number" min="1" /></label>
+
+          <div class="actions">
+            <button class="btn-main" type="submit">保存</button>
+            <button class="btn-muted" type="button" id="resetBtn">清空</button>
+            <button class="btn-muted" type="button" id="logoutBtn">退出</button>
+          </div>
+          <div id="msg" class="msg"></div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h3>当前导航项</h3>
+        <div id="list" class="list"></div>
+      </section>
+    </main>
+
+    <script>
+      const settingsForm = document.getElementById("settingsForm");
+      const settingsMsg = document.getElementById("settingsMsg");
+      const siteTitleInput = document.getElementById("siteTitleInput");
+      const form = document.getElementById("linkForm");
+      const msg = document.getElementById("msg");
+      const list = document.getElementById("list");
+      const iconInput = document.getElementById("icon");
+      const iconFile = document.getElementById("iconFile");
+      const iconPreview = document.getElementById("iconPreview");
+
+      function updateIconPreview(src) {
+        if (!src) {
+          iconPreview.style.display = "none";
+          iconPreview.removeAttribute("src");
+          return;
+        }
+        iconPreview.src = src;
+        iconPreview.style.display = "block";
+      }
+
+      async function request(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+          ...options
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.message || "请求失败");
+        }
+        return result;
+      }
+
+      function fillForm(item) {
+        document.getElementById("id").value = item.id || "";
+        document.getElementById("name").value = item.name || "";
+        document.getElementById("url").value = item.url || "";
+        iconInput.value = item.icon || "";
+        updateIconPreview(item.icon || "");
+        document.getElementById("category").value = item.category || "";
+        document.getElementById("order").value = item.order || "";
+        iconFile.value = "";
+      }
+
+      function clearForm() {
+        fillForm({});
+      }
+
+      iconInput.addEventListener("input", () => {
+        updateIconPreview(iconInput.value.trim());
+      });
+
+      iconFile.addEventListener("change", () => {
+        const file = iconFile.files && iconFile.files[0];
+        if (!file) return;
+        if (file.size > 1024 * 1024 * 2) {
+          msg.textContent = "图片请控制在 2MB 以内";
+          iconFile.value = "";
+          return;
+        }
+        msg.textContent = "";
+        const reader = new FileReader();
+        reader.onload = () => {
+          iconInput.value = String(reader.result || "");
+          updateIconPreview(iconInput.value);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      async function ensureAuth() {
+        try {
+          await request("/api/auth/check");
+        } catch (error) {
+          location.href = "/admin/login.html";
+        }
+      }
+
+      async function loadSettings() {
+        try {
+          const settings = await request("/api/admin/settings");
+          siteTitleInput.value = (settings.siteTitle || "").trim();
+        } catch (error) {
+          settingsMsg.textContent = error.message;
+        }
+      }
+
+      settingsForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        settingsMsg.textContent = "";
+        try {
+          const payload = { siteTitle: siteTitleInput.value.trim() };
+          await request("/api/admin/settings", { method: "PUT", body: JSON.stringify(payload) });
+          settingsMsg.textContent = "已保存";
+        } catch (error) {
+          settingsMsg.textContent = error.message;
+        }
+      });
+
+      async function loadLinks() {
+        try {
+          const links = await request("/api/admin/links");
+          list.innerHTML = "";
+          if (!links.length) {
+            list.innerHTML = "<div>暂无数据，请添加。</div>";
+            return;
+          }
+          for (const item of links) {
+            const row = document.createElement("div");
+            row.className = "item";
+            const safeName = item.name || "";
+            const safeUrl = item.url || "";
+            const safeIcon = item.icon || "/icons/default.svg";
+            const safeCategory = item.category || "未分类";
+            row.innerHTML = `
+              <img src="${safeIcon}" alt="${safeName}" />
+              <div>
+                <div>${safeName}</div>
+                <small>${safeCategory} · ${safeUrl}</small>
+              </div>
+              <div class="ops">
+                <button data-action="edit" data-id="${item.id}">编辑</button>
+                <button data-action="delete" data-id="${item.id}">删除</button>
+              </div>
+            `;
+            const iconEl = row.querySelector("img");
+            iconEl.onerror = () => {
+              iconEl.onerror = null;
+              iconEl.src = "/icons/default.svg";
+            };
+            row.querySelector('[data-action="edit"]').addEventListener("click", () => fillForm(item));
+            row.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+              if (!confirm("确认删除该链接？")) return;
+              await request(`/api/admin/links/${item.id}`, { method: "DELETE" });
+              await loadLinks();
+            });
+            list.appendChild(row);
+          }
+        } catch (error) {
+          msg.textContent = error.message;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        msg.textContent = "";
+        try {
+          const payload = {
+            name: document.getElementById("name").value.trim(),
+            url: document.getElementById("url").value.trim(),
+            icon: document.getElementById("icon").value.trim(),
+            category: document.getElementById("category").value.trim() || "未分类",
+            order: Number(document.getElementById("order").value) || undefined
+          };
+          const id = document.getElementById("id").value;
+          if (id) {
+            await request(`/api/admin/links/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+          } else {
+            await request("/api/admin/links", { method: "POST", body: JSON.stringify(payload) });
+          }
+          clearForm();
+          await loadLinks();
+        } catch (error) {
+          msg.textContent = error.message;
+        }
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", clearForm);
+      document.getElementById("logoutBtn").addEventListener("click", async () => {
+        await request("/api/auth/logout", { method: "POST" });
+        location.href = "/admin/login.html";
+      });
+
+      (async function init() {
+        await ensureAuth();
+        await loadSettings();
+        await loadLinks();
+      })();
+    </script>
+  </body>
+</html>

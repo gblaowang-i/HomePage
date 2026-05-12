@@ -1,0 +1,10 @@
+{
+  "name": "homepage-nav-center",
+  "version": "1.0.0",
+  "description": "Fluent Design style home navigation center",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
