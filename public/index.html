@@ -8,6 +8,7 @@
       (function () {
         try {
           var key = localStorage.getItem("home_tone_preset") || "graywhite";
+          if (!/^(black|white|graywhite)$/.test(key)) key = "graywhite";
           document.documentElement.dataset.theme = key;
           var title = localStorage.getItem("home_site_title");
           if (title && title.trim()) {
@@ -25,7 +26,10 @@
     <main class="shell">
       <header class="hero">
         <div class="hero-actions">
-          <select id="toneSelect" class="tone-select" aria-label="色彩风格"></select>
+          <label class="tone-select-wrap" for="toneSelect">
+            <span class="tone-select-label">色系</span>
+            <select id="toneSelect" class="tone-select" aria-label="主页色系"></select>
+          </label>
           <a class="admin-entry" href="/admin/login.html">后台管理</a>
         </div>
         <h1 id="siteTitle">家用导航中心</h1>

@@ -7,19 +7,29 @@
     <style>
       :root { --r: 16px; --card: 14px; }
       * { box-sizing: border-box; }
+      html {
+        height: 100%;
+      }
       body {
         margin: 0;
         font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
         color: #0f172a;
         background: #f6f7fb;
-        min-height: 100vh;
+        height: 100%;
+        overflow: hidden;
       }
       .page {
         width: min(1000px, 94vw);
-        margin: 20px auto;
+        height: 100%;
+        max-height: 100vh;
+        max-height: 100dvh;
+        margin: 0 auto;
+        padding: 16px 12px;
         display: grid;
         grid-template-columns: 320px 1fr;
         gap: 12px;
+        align-items: stretch;
+        min-height: 0;
       }
       .panel {
         border-radius: var(--r);
@@ -27,6 +37,26 @@
         border: 1px solid #e6e8ef;
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
         padding: 16px;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .panel--editor {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      .panel--list .list-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        margin-right: -4px;
+        padding-right: 4px;
+      }
+      .panel--list h3 {
+        flex-shrink: 0;
+        margin-bottom: 10px;
       }
       h2, h3 { margin-top: 0; }
       label { display: block; margin-top: 10px; font-size: 13px; color: #475569; }
@@ -89,13 +119,43 @@
         display: none;
       }
       @media (max-width: 860px) {
-        .page { grid-template-columns: 1fr; }
+        body {
+          overflow: auto;
+          height: auto;
+          min-height: 100vh;
+          min-height: 100dvh;
+        }
+        .page {
+          height: auto;
+          max-height: none;
+          grid-template-columns: 1fr;
+          padding-bottom: 24px;
+        }
+        .panel {
+          overflow: visible;
+          max-height: none;
+        }
+        .panel--editor {
+          overflow: visible;
+        }
+        .panel--list {
+          min-height: 0;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .panel--list .list-scroll {
+          flex: none;
+          min-height: 240px;
+          max-height: min(55vh, 420px);
+          overflow-y: auto;
+        }
       }
     </style>
   </head>
   <body>
     <main class="page">
-      <section class="panel">
+      <section class="panel panel--editor">
         <h2>站点设置</h2>
         <form id="settingsForm">
           <label>主页标题 <input id="siteTitleInput" placeholder="例如：家用导航中心" /></label>
@@ -131,13 +191,27 @@
         </form>
       </section>
 
-      <section class="panel">
+      <section class="panel panel--list">
         <h3>当前导航项</h3>
-        <div id="list" class="list"></div>
+        <div class="list-scroll">
+          <div id="list" class="list"></div>
+        </div>
       </section>
     </main>
 
     <script>
+      const DEFAULT_ICON =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23cbd5e1'/%3E%3Cpath fill='%23475569' d='M8 8h8v8H8z'/%3E%3C/svg%3E";
+
+      function apiUrl(path) {
+        if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
+        const p = path.startsWith("/") ? path : `/${path}`;
+        const key = "/admin/";
+        const i = location.pathname.indexOf(key);
+        const prefix = i > 0 ? location.pathname.slice(0, i) : "";
+        return prefix + p;
+      }
+
       const settingsForm = document.getElementById("settingsForm");
       const settingsMsg = document.getElementById("settingsMsg");
       const siteTitleInput = document.getElementById("siteTitleInput");
@@ -159,9 +233,15 @@
       }
 
       async function request(url, options = {}) {
-        const response = await fetch(url, {
-          headers: { "Content-Type": "application/json" },
-          ...options
+        const { headers: extraHeaders, ...rest } = options;
+        const response = await fetch(apiUrl(url), {
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            ...(extraHeaders || {})
+          },
+          ...rest
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -228,8 +308,12 @@
         settingsMsg.textContent = "";
         try {
           const payload = { siteTitle: siteTitleInput.value.trim() };
-          await request("/api/admin/settings", { method: "PUT", body: JSON.stringify(payload) });
+          const saved = await request("/api/admin/settings", { method: "PUT", body: JSON.stringify(payload) });
+          try {
+            localStorage.setItem("home_site_title", (saved.siteTitle || "").trim());
+          } catch (e) {}
           settingsMsg.textContent = "已保存";
+          await loadSettings();
         } catch (error) {
           settingsMsg.textContent = error.message;
         }
@@ -248,7 +332,7 @@
             row.className = "item";
             const safeName = item.name || "";
             const safeUrl = item.url || "";
-            const safeIcon = item.icon || "/icons/default.svg";
+            const safeIcon = item.icon || DEFAULT_ICON;
             const safeCategory = item.category || "未分类";
             row.innerHTML = `
               <img src="${safeIcon}" alt="${safeName}" />
@@ -264,7 +348,7 @@
             const iconEl = row.querySelector("img");
             iconEl.onerror = () => {
               iconEl.onerror = null;
-              iconEl.src = "/icons/default.svg";
+              iconEl.src = DEFAULT_ICON;
             };
             row.querySelector('[data-action="edit"]').addEventListener("click", () => fillForm(item));
             row.querySelector('[data-action="delete"]').addEventListener("click", async () => {

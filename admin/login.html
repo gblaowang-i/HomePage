@@ -58,6 +58,15 @@
     </form>
 
     <script>
+      function apiUrl(path) {
+        if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
+        const p = path.startsWith("/") ? path : `/${path}`;
+        const key = "/admin/";
+        const i = location.pathname.indexOf(key);
+        const prefix = i > 0 ? location.pathname.slice(0, i) : "";
+        return prefix + p;
+      }
+
       const form = document.getElementById("loginForm");
       const msg = document.getElementById("msg");
       form.addEventListener("submit", async (event) => {
@@ -65,8 +74,9 @@
         msg.textContent = "";
         const password = document.getElementById("password").value;
 
-        const response = await fetch("/api/auth/login", {
+        const response = await fetch(apiUrl("/api/auth/login"), {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password })
         });

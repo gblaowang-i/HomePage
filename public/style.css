@@ -1,13 +1,22 @@
 :root {
-  --shell-radius: 0px;
-  --card-radius: 0px;
+  --shell-radius: 18px;
+  /* 外层 padding+border 共 2px，与内层网格圆角衔接 */
+  --grid-frame-radius: calc(var(--shell-radius) - 2px);
+  /* 卡片与网格内缘同心：再减去 link-grid 的 1px padding */
+  --card-radius: calc(var(--grid-frame-radius) - 1px);
   --line-gap: 2px;
   --card-width: 160px;
   --card-height: 112px;
 
   /* Theme variables */
-  --bg-grad: #e5e7eb;
-  --bg-layer: none;
+  --bg-grad: linear-gradient(
+    155deg,
+    #f0ece8 0%,
+    #e8edf4 32%,
+    #ebe7f0 58%,
+    #e6eaf0 100%
+  );
+  --bg-layer: radial-gradient(ellipse 120% 70% at 50% -10%, rgba(255, 255, 255, 0.45) 0%, transparent 52%);
 
   --ui-border: rgba(100, 116, 139, 0.26);
   --ui-bg: rgba(255, 255, 255, 0.62);
@@ -50,6 +59,7 @@ body {
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background: var(--bg-grad);
+  background-attachment: fixed;
   overflow: hidden;
 }
 
@@ -76,27 +86,47 @@ body {
 
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
 }
 
-.tone-select {
-  min-width: 108px;
+.tone-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--ui-border);
   background: var(--ui-bg);
-  color: var(--ui-text);
-  font-size: 13px;
-  padding: 6px 10px;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
-.tone-select option {
-  color: var(--option-text);
+.tone-select-label {
+  font-size: 13px;
+  color: var(--ui-text);
+  white-space: nowrap;
+}
+
+.tone-select {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-border);
   background: var(--option-bg);
+  color: var(--option-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 5.5em;
+}
+
+.tone-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-border);
 }
 
 .admin-entry {
@@ -179,7 +209,7 @@ body {
   gap: 1px;
   justify-content: center;
   background: var(--glass-grid-bg);
-  border-radius: calc(var(--shell-radius) - 2px);
+  border-radius: var(--grid-frame-radius);
   padding: 1px;
 }
 
@@ -219,8 +249,8 @@ body {
 html[data-theme="black"] {
   --text: #f8fafc;
   --text-soft: rgba(248, 250, 252, 0.9);
-  --bg-grad: #000000;
-  --bg-layer: none;
+  --bg-grad: linear-gradient(150deg, #0a0a0f 0%, #14141c 42%, #060608 78%, #101018 100%);
+  --bg-layer: radial-gradient(ellipse 90% 55% at 50% 0%, rgba(120, 140, 200, 0.09) 0%, transparent 55%);
   --ui-border: rgba(255, 255, 255, 0.18);
   --ui-bg: rgba(255, 255, 255, 0.06);
   --ui-text: #f8fafc;
@@ -252,8 +282,8 @@ html[data-theme="white"] {
   --text-soft: rgba(15, 23, 42, 0.78);
   --ui-text: #0f172a;
   --option-text: #0f172a;
-  --bg-grad: #ffffff;
-  --bg-layer: none;
+  --bg-grad: linear-gradient(165deg, #ffffff 0%, #f3f6fc 38%, #faf8ff 72%, #f6f9fd 100%);
+  --bg-layer: radial-gradient(ellipse 100% 60% at 80% 10%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
   --ui-border: rgba(15, 23, 42, 0.18);
   --ui-bg: rgba(255, 255, 255, 0.7);
   --option-bg: #ffffff;
@@ -283,8 +313,14 @@ html[data-theme="graywhite"] {
   --text-soft: rgba(31, 41, 55, 0.92);
   --ui-text: #1f2937;
   --option-text: #111827;
-  --bg-grad: #e5e7eb;
-  --bg-layer: none;
+  --bg-grad: linear-gradient(
+    155deg,
+    #f0ece8 0%,
+    #e8edf4 32%,
+    #ebe7f0 58%,
+    #e6eaf0 100%
+  );
+  --bg-layer: radial-gradient(ellipse 120% 70% at 50% -10%, rgba(255, 255, 255, 0.45) 0%, transparent 52%);
   --ui-border: rgba(100, 116, 139, 0.26);
   --ui-bg: rgba(255, 255, 255, 0.62);
   --option-bg: #f8fafc;
@@ -322,10 +358,18 @@ html[data-theme="graywhite"] {
   text-shadow: var(--card-text-shadow);
 }
 
-.empty {
-  padding: 40px;
+.link-grid > .empty {
+  grid-column: 1 / -1;
+  padding: 48px 24px;
+  min-height: calc(var(--card-height) + 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--empty-text);
+  word-break: keep-all;
 }
 
 @media (max-width: 1320px) {

@@ -3,15 +3,79 @@ const state = {
   activeCategory: "全部"
 };
 const SITE_TITLE_KEY = "home_site_title";
+const TONE_STORAGE = "home_tone_preset";
+const TONE_PRESETS = [
+  { id: "graywhite", label: "灰白色" },
+  { id: "black", label: "黑色" },
+  { id: "white", label: "白色" }
+];
+const DEFAULT_ICON =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23cbd5e1'/%3E%3Cpath fill='%23475569' d='M8 8h8v8H8z'/%3E%3C/svg%3E";
+
+function apiUrl(path) {
+  if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const key = "/admin/";
+  const i = location.pathname.indexOf(key);
+  if (i > 0) return location.pathname.slice(0, i) + p;
+  if (location.pathname.endsWith(".html")) {
+    const last = location.pathname.lastIndexOf("/");
+    if (last > 0) return location.pathname.slice(0, last) + p;
+  }
+  const norm = location.pathname.replace(/\/+$/, "") || "/";
+  if (norm !== "/" && p.startsWith("/api/")) {
+    return norm + p;
+  }
+  return p;
+}
+
+function applyTone(id) {
+  const ok = TONE_PRESETS.some((preset) => preset.id === id);
+  const key = ok ? id : "graywhite";
+  document.documentElement.dataset.theme = key;
+  try {
+    localStorage.setItem(TONE_STORAGE, key);
+  } catch {
+    // ignore
+  }
+}
+
+function renderToneOptions(select) {
+  select.innerHTML = "";
+  for (const preset of TONE_PRESETS) {
+    const option = document.createElement("option");
+    option.value = preset.id;
+    option.textContent = preset.label;
+    select.appendChild(option);
+  }
+}
+
+function initToneControls() {
+  const select = document.getElementById("toneSelect");
+  if (!select) return;
+  renderToneOptions(select);
+  let initial = "graywhite";
+  try {
+    const saved = localStorage.getItem(TONE_STORAGE);
+    if (saved && TONE_PRESETS.some((p) => p.id === saved)) {
+      initial = saved;
+    }
+  } catch {
+    // ignore
+  }
+  select.value = initial;
+  applyTone(initial);
+  select.addEventListener("change", () => applyTone(select.value));
+}
 
 function applyCachedSiteTitle() {
   try {
-    const cached = localStorage.getItem(SITE_TITLE_KEY);
-    if (!cached || !cached.trim()) return;
-    const title = cached.trim();
+    const title = localStorage.getItem(SITE_TITLE_KEY);
+    if (!title || !title.trim()) return;
+    const t = title.trim();
     const h1 = document.getElementById("siteTitle");
-    if (h1) h1.textContent = title;
-    document.title = title;
+    if (h1) h1.textContent = t;
+    document.title = t;
   } catch {
     // ignore
   }
@@ -19,17 +83,21 @@ function applyCachedSiteTitle() {
 
 async function loadSiteTitle() {
   try {
-    const response = await fetch("/api/settings");
+    const response = await fetch(apiUrl("/api/settings"), { cache: "no-store" });
     if (!response.ok) return;
-    const settings = await response.json();
-    const title =
-      settings && settings.siteTitle && String(settings.siteTitle).trim()
-        ? String(settings.siteTitle).trim()
+    const raw = await response.json();
+    const siteTitle =
+      raw && raw.siteTitle && String(raw.siteTitle).trim()
+        ? String(raw.siteTitle).trim()
         : "家用导航中心";
     const h1 = document.getElementById("siteTitle");
-    if (h1) h1.textContent = title;
-    document.title = title;
-    localStorage.setItem(SITE_TITLE_KEY, title);
+    if (h1) h1.textContent = siteTitle;
+    document.title = siteTitle;
+    try {
+      localStorage.setItem(SITE_TITLE_KEY, siteTitle);
+    } catch {
+      // ignore
+    }
   } catch {
     // ignore
   }
@@ -79,12 +147,6 @@ function ensureOrderContainsAll() {
     saveOrder(order.concat(appended));
   }
 }
-
-const tonePresets = [
-  { key: "black", name: "黑色系" },
-  { key: "white", name: "白色系" },
-  { key: "graywhite", name: "灰白色系" }
-];
 
 function withCategory(item) {
   return {
@@ -178,7 +240,7 @@ function renderLinks() {
     icon.alt = item.name;
     icon.onerror = () => {
       icon.onerror = null;
-      icon.src = "/icons/default.svg";
+      icon.src = DEFAULT_ICON;
     };
 
     const text = document.createElement("span");
@@ -190,41 +252,12 @@ function renderLinks() {
   }
 }
 
-function applyTone(key) {
-  document.documentElement.dataset.theme = key;
-  localStorage.setItem("home_tone_preset", key);
-}
-
-function renderToneOptions() {
-  const select = document.getElementById("toneSelect");
-  select.innerHTML = "";
-  for (const preset of tonePresets) {
-    const option = document.createElement("option");
-    option.value = preset.key;
-    option.textContent = `风格：${preset.name}`;
-    select.appendChild(option);
-  }
-}
-
-function initToneControls() {
-  const savedKey = localStorage.getItem("home_tone_preset") || "graywhite";
-  const preset = tonePresets.find((item) => item.key === savedKey) || tonePresets[0];
-  renderToneOptions();
-  const select = document.getElementById("toneSelect");
-  select.value = preset.key;
-  select.addEventListener("change", () => {
-    const next = tonePresets.find((item) => item.key === select.value) || tonePresets[0];
-    applyTone(next.key);
-  });
-  applyTone(preset.key);
-}
-
 async function loadLinks() {
   const grid = document.getElementById("linkGrid");
   grid.innerHTML = '<div class="empty">加载中...</div>';
 
   try {
-    const response = await fetch("/api/links");
+    const response = await fetch(apiUrl("/api/links"), { cache: "no-store" });
     if (!response.ok) {
       throw new Error("接口请求失败");
     }
@@ -245,7 +278,7 @@ async function loadLinks() {
   }
 }
 
-initToneControls();
 applyCachedSiteTitle();
+initToneControls();
 loadSiteTitle();
 loadLinks();

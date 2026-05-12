@@ -12,13 +12,34 @@ const DATA_FILE = process.env.DATA_FILE
   : path.join(__dirname, "data.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_DIR = path.join(__dirname, "admin");
+const BASE_PATH = (process.env.BASE_PATH || "").replace(/^\/+|\/+$/g, "");
+
+function normalizeRequestPathname(rawPathname) {
+  let p;
+  try {
+    p = decodeURIComponent(rawPathname);
+  } catch {
+    p = rawPathname;
+  }
+  p = p.replace(/\/+/g, "/");
+  if (BASE_PATH) {
+    const prefix = `/${BASE_PATH}`;
+    if (p === prefix || p.startsWith(`${prefix}/`)) {
+      p = p.slice(prefix.length) || "/";
+    }
+  }
+  while (p.length > 1 && p.endsWith("/")) {
+    p = p.slice(0, -1);
+  }
+  if (!p.startsWith("/")) {
+    p = `/${p.replace(/^\/+/, "")}`;
+  }
+  return p || "/";
+}
 
 function parseCookies(req) {
   const header = req.headers.cookie;
-  if (!header) {
-    return {};
-  }
-
+  if (!header) return {};
   return header.split(";").reduce((acc, part) => {
     const [key, ...valueParts] = part.trim().split("=");
     acc[key] = decodeURIComponent(valueParts.join("="));
@@ -27,8 +48,7 @@ function parseCookies(req) {
 }
 
 function isAuthed(req) {
-  const cookies = parseCookies(req);
-  return cookies.admin_token === SESSION_TOKEN;
+  return parseCookies(req).admin_token === SESSION_TOKEN;
 }
 
 async function readData() {
@@ -37,12 +57,14 @@ async function readData() {
   if (!Array.isArray(data.links)) {
     data.links = [];
   }
-  if (!data.settings || typeof data.settings !== "object") {
-    data.settings = { siteTitle: "家用导航中心" };
-  }
-  if (!data.settings.siteTitle || typeof data.settings.siteTitle !== "string") {
-    data.settings.siteTitle = "家用导航中心";
-  }
+  const st =
+    data.settings &&
+    typeof data.settings === "object" &&
+    data.settings.siteTitle &&
+    String(data.settings.siteTitle).trim()
+      ? String(data.settings.siteTitle).trim()
+      : "家用导航中心";
+  data.settings = { siteTitle: st };
   return data;
 }
 
@@ -62,6 +84,7 @@ function normalizeLink(item, fallbackOrder = 1) {
 function json(res, statusCode, payload, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
     ...extraHeaders
   });
   res.end(JSON.stringify(payload));
@@ -90,17 +113,19 @@ function getContentType(filePath) {
   return map[ext] || "application/octet-stream";
 }
 
-async function readBody(req) {
+async function readRawUtf8(req) {
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
   }
-  const raw = Buffer.concat(chunks).toString("utf-8");
-  if (!raw) {
-    return {};
-  }
+  return Buffer.concat(chunks).toString("utf-8").replace(/^\uFEFF/, "");
+}
+
+async function readBody(req) {
+  const raw = await readRawUtf8(req);
+  if (!raw.trim()) return {};
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw.trim());
   } catch {
     return {};
   }
@@ -116,7 +141,9 @@ async function serveFile(res, filePath) {
 }
 
 async function handleApi(req, res, pathname) {
-  if (req.method === "GET" && pathname === "/api/settings") {
+  const method = String(req.method || "GET").toUpperCase();
+
+  if (method === "GET" && pathname === "/api/settings") {
     try {
       const data = await readData();
       return json(res, 200, data.settings);
@@ -125,7 +152,7 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  if (req.method === "GET" && pathname === "/api/links") {
+  if (method === "GET" && pathname === "/api/links") {
     try {
       const data = await readData();
       const links = data.links
@@ -137,7 +164,7 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  if (req.method === "POST" && pathname === "/api/auth/login") {
+  if (method === "POST" && pathname === "/api/auth/login") {
     const body = await readBody(req);
     if (body.password !== ADMIN_PASSWORD) {
       return json(res, 401, { message: "密码错误" });
@@ -150,7 +177,7 @@ async function handleApi(req, res, pathname) {
     );
   }
 
-  if (req.method === "POST" && pathname === "/api/auth/logout") {
+  if (method === "POST" && pathname === "/api/auth/logout") {
     return json(
       res,
       200,
@@ -159,7 +186,7 @@ async function handleApi(req, res, pathname) {
     );
   }
 
-  if (req.method === "GET" && pathname === "/api/auth/check") {
+  if (method === "GET" && pathname === "/api/auth/check") {
     if (!isAuthed(req)) {
       return json(res, 401, { message: "Unauthorized" });
     }
@@ -170,7 +197,7 @@ async function handleApi(req, res, pathname) {
     return json(res, 401, { message: "Unauthorized" });
   }
 
-  if (req.method === "GET" && pathname === "/api/admin/settings") {
+  if (method === "GET" && pathname === "/api/admin/settings") {
     try {
       const data = await readData();
       return json(res, 200, data.settings);
@@ -179,22 +206,24 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  if (req.method === "PUT" && pathname === "/api/admin/settings") {
+  if (method === "PUT" && pathname === "/api/admin/settings") {
     try {
       const body = await readBody(req);
-      const siteTitle =
-        body.siteTitle && String(body.siteTitle).trim() ? String(body.siteTitle).trim() : "家用导航中心";
-
       const data = await readData();
-      data.settings = { ...(data.settings || {}), siteTitle };
+      const siteTitle =
+        body.siteTitle && String(body.siteTitle).trim()
+          ? String(body.siteTitle).trim()
+          : "家用导航中心";
+      data.settings = { siteTitle };
       await writeData(data);
       return json(res, 200, data.settings);
-    } catch {
+    } catch (err) {
+      console.error(err);
       return json(res, 500, { message: "保存失败" });
     }
   }
 
-  if (req.method === "GET" && pathname === "/api/admin/links") {
+  if (method === "GET" && pathname === "/api/admin/links") {
     try {
       const data = await readData();
       const links = data.links
@@ -206,7 +235,7 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  if (req.method === "POST" && pathname === "/api/admin/links") {
+  if (method === "POST" && pathname === "/api/admin/links") {
     try {
       const body = await readBody(req);
       const { name, url, icon, order, category } = body;
@@ -230,10 +259,10 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  const matchPut = pathname.match(/^\/api\/admin\/links\/([^/]+)$/);
-  if (req.method === "PUT" && matchPut) {
+  const matchId = pathname.match(/^\/api\/admin\/links\/([^/]+)$/);
+  if (method === "PUT" && matchId) {
     try {
-      const id = decodeURIComponent(matchPut[1]);
+      const id = decodeURIComponent(matchId[1]);
       const body = await readBody(req);
       const data = await readData();
       const index = data.links.findIndex((item) => item.id === id);
@@ -257,10 +286,9 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  const matchDelete = pathname.match(/^\/api\/admin\/links\/([^/]+)$/);
-  if (req.method === "DELETE" && matchDelete) {
+  if (method === "DELETE" && matchId) {
     try {
-      const id = decodeURIComponent(matchDelete[1]);
+      const id = decodeURIComponent(matchId[1]);
       const data = await readData();
       const nextLinks = data.links.filter((item) => item.id !== id);
       if (nextLinks.length === data.links.length) {
@@ -279,7 +307,7 @@ async function handleApi(req, res, pathname) {
 
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = decodeURIComponent(requestUrl.pathname);
+  const pathname = normalizeRequestPathname(requestUrl.pathname);
 
   if (pathname.startsWith("/api/")) {
     await handleApi(req, res, pathname);
@@ -307,5 +335,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
+  console.log(`Server http://localhost:${PORT}  DATA_FILE=${DATA_FILE}`);
 });
