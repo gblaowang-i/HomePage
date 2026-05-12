@@ -2,6 +2,20 @@ const state = {
   links: [],
   activeCategory: "全部"
 };
+const SITE_TITLE_KEY = "home_site_title";
+
+function applyCachedSiteTitle() {
+  try {
+    const cached = localStorage.getItem(SITE_TITLE_KEY);
+    if (!cached || !cached.trim()) return;
+    const title = cached.trim();
+    const h1 = document.getElementById("siteTitle");
+    if (h1) h1.textContent = title;
+    document.title = title;
+  } catch {
+    // ignore
+  }
+}
 
 async function loadSiteTitle() {
   try {
@@ -15,6 +29,7 @@ async function loadSiteTitle() {
     const h1 = document.getElementById("siteTitle");
     if (h1) h1.textContent = title;
     document.title = title;
+    localStorage.setItem(SITE_TITLE_KEY, title);
   } catch {
     // ignore
   }
@@ -231,5 +246,6 @@ async function loadLinks() {
 }
 
 initToneControls();
+applyCachedSiteTitle();
 loadSiteTitle();
 loadLinks();
