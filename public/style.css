@@ -6,7 +6,7 @@
   --card-radius: calc(var(--grid-frame-radius) - 1px);
   --line-gap: 2px;
   --card-width: 160px;
-  --card-height: 102px;
+  --card-height: 112px;
 
   /* Theme variables */
   --bg-grad: linear-gradient(
@@ -210,7 +210,7 @@ button.admin-entry {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(10, var(--card-width));
+  grid-template-columns: repeat(8, var(--card-width));
   gap: 1px;
   justify-content: center;
   background: var(--glass-grid-bg);
@@ -351,14 +351,14 @@ html[data-theme="graywhite"] {
 }
 
 .link-card img {
-  width: 30px;
-  height: 20px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .link-card span {
-  margin-top: 5px;
+  margin-top: 8px;
   font-size: 14px;
   text-shadow: var(--card-text-shadow);
 }
@@ -375,12 +375,6 @@ html[data-theme="graywhite"] {
   line-height: 1.55;
   color: var(--empty-text);
   word-break: keep-all;
-}
-
-@media (max-width: 1680px) {
-  .link-grid {
-    grid-template-columns: repeat(8, var(--card-width));
-  }
 }
 
 @media (max-width: 1320px) {
@@ -410,6 +404,6 @@ html[data-theme="graywhite"] {
 @media (max-width: 400px) {
   :root {
     --card-width: 150px;
-    --card-height: 94px;
+    --card-height: 102px;
   }
 }
