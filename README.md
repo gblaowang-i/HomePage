@@ -25,6 +25,16 @@ docker compose up -d --build
 
 公网建议放在 **HTTPS** 反向代理之后，避免密码与 Cookie 明文传输。
 
+## 安全相关（可选环境变量）
+
+| 变量 | 作用 |
+|------|------|
+| `COOKIE_SECURE` | 设为 `1` 或 `true` 时，会话 Cookie 带 `Secure`，仅 HTTPS 传输。**仅在你已用 HTTPS 访问站点时开启**，否则浏览器不会带上 Cookie。 |
+| `TRUST_PROXY` | 设为 `1` 或 `true` 时，从 `X-Forwarded-For` 取客户端 IP，用于**登录失败限速**；仅在反向代理已正确写入该头时使用，避免被伪造。 |
+| `MAX_JSON_BODY_BYTES` | JSON 请求体最大字节数，默认 `262144`（256KB），上限约 2MB。 |
+
+服务端还会：限制 JSON 体积、静态文件路径防穿越、登录接口按 IP 限速（约 15 分钟内连续错误密码超过阈值会短暂拒绝）、密码校验使用哈希后常量时间比较、常见安全响应头（`nosniff`、`DENY` 框架嵌入等）。
+
 ## 常用命令
 
 ```bash

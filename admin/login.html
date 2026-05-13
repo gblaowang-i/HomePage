@@ -91,7 +91,7 @@
         const result = await response.json();
 
         if (!response.ok) {
-          msg.textContent = result.message || "登录失败";
+          msg.textContent = result.message || (response.status === 429 ? "尝试过于频繁，请稍后再试" : "登录失败");
           return;
         }
         location.href = apiUrl("/admin/dashboard.html");

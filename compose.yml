@@ -9,5 +9,9 @@ services:
       ADMIN_PASSWORD: "123456"
       # 公网部署时建议设置：与后台密码独立；留空则不校验，任何人可打开主页
       # SITE_PASSWORD: "请改成强密码"
+      # 经 HTTPS 反代访问时建议开启，Cookie 带 Secure（仅 HTTPS 发送）
+      # COOKIE_SECURE: "1"
+      # 反代已设置 X-Forwarded-For 时开启，登录限速按真实客户端 IP
+      # TRUST_PROXY: "1"
     volumes:
       - ./data.json:/app/data.json
