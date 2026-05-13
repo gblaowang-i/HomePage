@@ -4,13 +4,9 @@
 
 ---
 
-## 一、环境要求
+## 一、从 Git 拉取到服务器并首次运行
 
-服务器需已安装 **Git**、**Docker**、**Docker Compose**（`docker compose` 命令可用）。
-
----
-
-## 二、从 Git 拉取到服务器并首次运行
+服务器需已安装 **Git**、**Docker**，且可使用 **`docker compose`** 命令。
 
 ### 1. 选择安装目录并克隆仓库
 
@@ -21,8 +17,6 @@ cd /opt
 sudo git clone https://github.com/gblaowang-i/HomePage.git
 cd HomePage
 ```
-
-仓库地址若不同，请替换为你的远程 URL。
 
 ### 2. 配置密码与环境变量
 
@@ -63,11 +57,9 @@ docker compose logs -f
 - **前台**：`http://服务器IP:3000/`（若配置了 `SITE_PASSWORD`，会先进入验证页）  
 - **后台**：`http://服务器IP:3000/admin/login.html`  
 
-公网建议前面加 **HTTPS** 反向代理；HTTPS 稳定后可按需开启 `COOKIE_SECURE`。
-
 ---
 
-## 三、更新代码
+## 二、更新代码
 
 ```bash
 cd /opt/HomePage
@@ -79,7 +71,7 @@ docker compose up -d --build
 
 ---
 
-## 四、常用运维命令
+## 三、常用运维命令
 
 ```bash
 cd /opt/HomePage
@@ -92,10 +84,3 @@ docker compose up -d --build
 
 `docker compose down` 会停掉并删除容器，**不会**删除镜像与当前目录下的 `data.json`。
 
----
-
-## 五、其他说明
-
-- **改端口**：编辑 `compose.yml` 中 `ports`，例如 `8080:3000` 则对外访问 `8080`。  
-- **本地开发**：本机安装 Node.js 后，`npm start`，浏览器访问 `http://localhost:3000/`。  
-- **安全**：会话 Cookie 为 HttpOnly；服务端含请求体大小限制、静态路径防穿越、登录失败限速、常见安全响应头等；详见仓库内 `server.js` 与上文环境变量表。
