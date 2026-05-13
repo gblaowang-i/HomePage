@@ -68,19 +68,6 @@ function initToneControls() {
   select.addEventListener("change", () => applyTone(select.value));
 }
 
-function applyCachedSiteTitle() {
-  try {
-    const title = localStorage.getItem(SITE_TITLE_KEY);
-    if (!title || !title.trim()) return;
-    const t = title.trim();
-    const h1 = document.getElementById("siteTitle");
-    if (h1) h1.textContent = t;
-    document.title = t;
-  } catch {
-    // ignore
-  }
-}
-
 async function loadSiteTitle() {
   try {
     const response = await fetch(apiUrl("/api/settings"), { cache: "no-store" });
@@ -278,7 +265,6 @@ async function loadLinks() {
   }
 }
 
-applyCachedSiteTitle();
 initToneControls();
 loadSiteTitle();
 loadLinks();

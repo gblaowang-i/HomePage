@@ -10,10 +10,6 @@
           var key = localStorage.getItem("home_tone_preset") || "graywhite";
           if (!/^(black|white|graywhite)$/.test(key)) key = "graywhite";
           document.documentElement.dataset.theme = key;
-          var title = localStorage.getItem("home_site_title");
-          if (title && title.trim()) {
-            document.title = title.trim();
-          }
         } catch (e) {
           document.documentElement.dataset.theme = "graywhite";
         }

@@ -140,6 +140,37 @@ async function serveFile(res, filePath) {
   }
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function injectSiteTitleIntoIndexHtml(html, siteTitle) {
+  const esc = escapeHtml(siteTitle);
+  let out = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc}</title>`);
+  out = out.replace(/<h1 id="siteTitle">[^<]*<\/h1>/, `<h1 id="siteTitle">${esc}</h1>`);
+  return out;
+}
+
+async function serveIndexHtml(res) {
+  try {
+    const indexPath = path.join(PUBLIC_DIR, "index.html");
+    const [raw, data] = await Promise.all([fs.readFile(indexPath, "utf-8"), readData()]);
+    const body = injectSiteTitleIntoIndexHtml(raw, data.settings.siteTitle);
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(body);
+  } catch (err) {
+    console.error(err);
+    text(res, 500, "Internal Server Error");
+  }
+}
+
 async function handleApi(req, res, pathname) {
   const method = String(req.method || "GET").toUpperCase();
 
@@ -315,7 +346,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/" || pathname === "/index.html") {
-    await serveFile(res, path.join(PUBLIC_DIR, "index.html"));
+    await serveIndexHtml(res);
     return;
   }
 
