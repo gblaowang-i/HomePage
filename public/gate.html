@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>访问验证</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #f6f7fb;
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        color: #0f172a;
+      }
+      .panel {
+        width: min(420px, 92vw);
+        border-radius: 14px;
+        padding: 24px;
+        background: #ffffff;
+        border: 1px solid #e6e8ef;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      p.hint {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: #64748b;
+      }
+      input,
+      button {
+        width: 100%;
+        border: 1px solid #d6d9e2;
+        border-radius: 10px;
+        padding: 12px;
+        margin-top: 10px;
+      }
+      input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      }
+      button {
+        cursor: pointer;
+        color: #ffffff;
+        border: none;
+        background: #2563eb;
+      }
+      .msg {
+        min-height: 22px;
+        margin-top: 10px;
+        color: #b91c1c;
+      }
+      .foot {
+        margin-top: 18px;
+        font-size: 13px;
+        color: #64748b;
+      }
+      .foot a {
+        color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="gateForm" class="panel">
+      <h2>访问主页</h2>
+      <p class="hint">此站点已开启访问密码，请输入后继续。</p>
+      <input id="password" type="password" placeholder="站点访问密码" required autocomplete="current-password" />
+      <button type="submit">进入</button>
+      <div id="msg" class="msg"></div>
+      <p class="foot">管理员请前往 <a id="adminLink" href="#">后台登录</a></p>
+    </form>
+
+    <script>
+      function apiUrl(path) {
+        if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
+        const p = path.startsWith("/") ? path : `/${path}`;
+        const key = "/admin/";
+        const i = location.pathname.indexOf(key);
+        if (i >= 0) return location.pathname.slice(0, i) + p;
+        if (location.pathname.endsWith(".html")) {
+          const last = location.pathname.lastIndexOf("/");
+          if (last >= 0) return location.pathname.slice(0, last) + p;
+        }
+        const norm = location.pathname.replace(/\/+$/, "") || "/";
+        if (norm !== "/" && p.startsWith("/api/")) {
+          return norm + p;
+        }
+        return p;
+      }
+
+      function safeRedirectPath(raw) {
+        if (!raw || typeof raw !== "string") return "/";
+        try {
+          const s = decodeURIComponent(raw).trim();
+          if (!s.startsWith("/") || s.startsWith("//")) return "/";
+          if (s.includes("://") || s.includes("\\")) return "/";
+          return s;
+        } catch {
+          return "/";
+        }
+      }
+
+      document.getElementById("adminLink").href = apiUrl("/admin/login.html");
+
+      const form = document.getElementById("gateForm");
+      const msg = document.getElementById("msg");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        msg.textContent = "";
+        const password = document.getElementById("password").value;
+
+        const response = await fetch(apiUrl("/api/site-auth/login"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch {
+          // ignore
+        }
+
+        if (!response.ok) {
+          msg.textContent = result.message || "登录失败";
+          return;
+        }
+
+        const params = new URLSearchParams(location.search);
+        const dest = safeRedirectPath(params.get("from"));
+        location.assign(apiUrl(dest));
+      });
+    </script>
+  </body>
+</html>

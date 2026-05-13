@@ -144,6 +144,12 @@ body {
   -webkit-backdrop-filter: blur(14px);
 }
 
+button.admin-entry {
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
 .hero h1 {
   margin: 0;
   font-size: clamp(24px, 4vw, 36px);

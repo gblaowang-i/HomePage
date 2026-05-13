@@ -7,6 +7,9 @@ const { URL } = require("url");
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "123456";
 const SESSION_TOKEN = crypto.randomBytes(24).toString("hex");
+const SITE_PASSWORD = String(process.env.SITE_PASSWORD || "").trim();
+const VIEWER_AUTH_ENABLED = Boolean(SITE_PASSWORD);
+const VIEWER_SESSION_TOKEN = VIEWER_AUTH_ENABLED ? crypto.randomBytes(24).toString("hex") : "";
 const DATA_FILE = process.env.DATA_FILE
   ? path.resolve(process.env.DATA_FILE)
   : path.join(__dirname, "data.json");
@@ -49,6 +52,19 @@ function parseCookies(req) {
 
 function isAuthed(req) {
   return parseCookies(req).admin_token === SESSION_TOKEN;
+}
+
+function isViewerAuthed(req) {
+  if (!VIEWER_AUTH_ENABLED) return true;
+  return parseCookies(req).site_token === VIEWER_SESSION_TOKEN;
+}
+
+function viewerLocationPath(internalPath) {
+  const p = internalPath.startsWith("/") ? internalPath : `/${internalPath}`;
+  if (!BASE_PATH) return p;
+  const base = `/${BASE_PATH}`.replace(/\/+/g, "/");
+  const suffix = p === "/" ? "" : p;
+  return (base + suffix).replace(/\/+/g, "/") || "/";
 }
 
 async function readData() {
@@ -174,7 +190,45 @@ async function serveIndexHtml(res) {
 async function handleApi(req, res, pathname) {
   const method = String(req.method || "GET").toUpperCase();
 
+  if (method === "POST" && pathname === "/api/site-auth/login") {
+    if (!VIEWER_AUTH_ENABLED) {
+      return json(res, 400, { message: "未配置站点访问密码" });
+    }
+    const body = await readBody(req);
+    if (body.password !== SITE_PASSWORD) {
+      return json(res, 401, { message: "密码错误" });
+    }
+    const maxAge = 60 * 60 * 24 * 30;
+    return json(
+      res,
+      200,
+      { message: "ok" },
+      {
+        "Set-Cookie": `site_token=${VIEWER_SESSION_TOKEN}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`
+      }
+    );
+  }
+
+  if (method === "POST" && pathname === "/api/site-auth/logout") {
+    return json(
+      res,
+      200,
+      { message: "ok" },
+      { "Set-Cookie": "site_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" }
+    );
+  }
+
+  if (method === "GET" && pathname === "/api/site-auth/status") {
+    return json(res, 200, {
+      enabled: VIEWER_AUTH_ENABLED,
+      loggedIn: VIEWER_AUTH_ENABLED ? isViewerAuthed(req) : false
+    });
+  }
+
   if (method === "GET" && pathname === "/api/settings") {
+    if (VIEWER_AUTH_ENABLED && !isViewerAuthed(req)) {
+      return json(res, 401, { message: "Unauthorized" });
+    }
     try {
       const data = await readData();
       return json(res, 200, data.settings);
@@ -184,6 +238,9 @@ async function handleApi(req, res, pathname) {
   }
 
   if (method === "GET" && pathname === "/api/links") {
+    if (VIEWER_AUTH_ENABLED && !isViewerAuthed(req)) {
+      return json(res, 401, { message: "Unauthorized" });
+    }
     try {
       const data = await readData();
       const links = data.links
@@ -345,7 +402,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === "/gate.html") {
+    if (!VIEWER_AUTH_ENABLED) {
+      res.writeHead(302, { Location: viewerLocationPath("/") });
+      res.end();
+      return;
+    }
+    await serveFile(res, path.join(PUBLIC_DIR, "gate.html"));
+    return;
+  }
+
   if (pathname === "/" || pathname === "/index.html") {
+    if (VIEWER_AUTH_ENABLED && !isViewerAuthed(req)) {
+      const from = pathname === "/index.html" ? "/index.html" : "/";
+      const dest = viewerLocationPath(`/gate.html?from=${encodeURIComponent(from)}`);
+      res.writeHead(302, { Location: dest });
+      res.end();
+      return;
+    }
     await serveIndexHtml(res);
     return;
   }
@@ -367,4 +441,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Server http://localhost:${PORT}  DATA_FILE=${DATA_FILE}`);
+  if (VIEWER_AUTH_ENABLED) {
+    console.log("已启用站点访问密码 SITE_PASSWORD（与 ADMIN_PASSWORD 独立）");
+  }
 });

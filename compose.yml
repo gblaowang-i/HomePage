@@ -7,5 +7,7 @@ services:
       - "3000:3000"
     environment:
       ADMIN_PASSWORD: "123456"
+      # 公网部署时建议设置：与后台密码独立；留空则不校验，任何人可打开主页
+      # SITE_PASSWORD: "请改成强密码"
     volumes:
       - ./data.json:/app/data.json
