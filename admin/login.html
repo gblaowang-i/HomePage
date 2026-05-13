@@ -63,8 +63,16 @@
         const p = path.startsWith("/") ? path : `/${path}`;
         const key = "/admin/";
         const i = location.pathname.indexOf(key);
-        const prefix = i > 0 ? location.pathname.slice(0, i) : "";
-        return prefix + p;
+        if (i >= 0) return location.pathname.slice(0, i) + p;
+        if (location.pathname.endsWith(".html")) {
+          const last = location.pathname.lastIndexOf("/");
+          if (last >= 0) return location.pathname.slice(0, last) + p;
+        }
+        const norm = location.pathname.replace(/\/+$/, "") || "/";
+        if (norm !== "/" && p.startsWith("/api/")) {
+          return norm + p;
+        }
+        return p;
       }
 
       const form = document.getElementById("loginForm");
@@ -86,7 +94,7 @@
           msg.textContent = result.message || "登录失败";
           return;
         }
-        location.href = "/admin/dashboard.html";
+        location.href = apiUrl("/admin/dashboard.html");
       });
     </script>
   </body>

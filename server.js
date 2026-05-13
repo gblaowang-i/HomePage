@@ -97,6 +97,21 @@ function normalizeLink(item, fallbackOrder = 1) {
   };
 }
 
+function sortedLinksFromData(data) {
+  return data.links
+    .map((item, index) => normalizeLink(item, index + 1))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+const COOKIE_BASE = "HttpOnly; SameSite=Lax; Path=/";
+
+function sessionCookie(name, value, maxAge) {
+  if (maxAge === 0) {
+    return `${name}=; ${COOKIE_BASE}; Max-Age=0`;
+  }
+  return `${name}=${value}; ${COOKIE_BASE}; Max-Age=${maxAge}`;
+}
+
 function json(res, statusCode, payload, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
@@ -203,19 +218,12 @@ async function handleApi(req, res, pathname) {
       res,
       200,
       { message: "ok" },
-      {
-        "Set-Cookie": `site_token=${VIEWER_SESSION_TOKEN}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`
-      }
+      { "Set-Cookie": sessionCookie("site_token", VIEWER_SESSION_TOKEN, maxAge) }
     );
   }
 
   if (method === "POST" && pathname === "/api/site-auth/logout") {
-    return json(
-      res,
-      200,
-      { message: "ok" },
-      { "Set-Cookie": "site_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" }
-    );
+    return json(res, 200, { message: "ok" }, { "Set-Cookie": sessionCookie("site_token", "", 0) });
   }
 
   if (method === "GET" && pathname === "/api/site-auth/status") {
@@ -243,10 +251,7 @@ async function handleApi(req, res, pathname) {
     }
     try {
       const data = await readData();
-      const links = data.links
-        .map((item, index) => normalizeLink(item, index + 1))
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-      return json(res, 200, links);
+      return json(res, 200, sortedLinksFromData(data));
     } catch {
       return json(res, 500, { message: "Failed to read links." });
     }
@@ -261,17 +266,12 @@ async function handleApi(req, res, pathname) {
       res,
       200,
       { message: "登录成功" },
-      { "Set-Cookie": `admin_token=${SESSION_TOKEN}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800` }
+      { "Set-Cookie": sessionCookie("admin_token", SESSION_TOKEN, 28800) }
     );
   }
 
   if (method === "POST" && pathname === "/api/auth/logout") {
-    return json(
-      res,
-      200,
-      { message: "已退出登录" },
-      { "Set-Cookie": "admin_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" }
-    );
+    return json(res, 200, { message: "已退出登录" }, { "Set-Cookie": sessionCookie("admin_token", "", 0) });
   }
 
   if (method === "GET" && pathname === "/api/auth/check") {
@@ -314,10 +314,7 @@ async function handleApi(req, res, pathname) {
   if (method === "GET" && pathname === "/api/admin/links") {
     try {
       const data = await readData();
-      const links = data.links
-        .map((item, index) => normalizeLink(item, index + 1))
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-      return json(res, 200, links);
+      return json(res, 200, sortedLinksFromData(data));
     } catch {
       return json(res, 500, { message: "Failed to read links." });
     }

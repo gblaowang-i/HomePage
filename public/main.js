@@ -12,6 +12,8 @@ const TONE_PRESETS = [
 const DEFAULT_ICON =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23cbd5e1'/%3E%3Cpath fill='%23475569' d='M8 8h8v8H8z'/%3E%3C/svg%3E";
 
+const apiFetchInit = { cache: "no-store", credentials: "same-origin" };
+
 function apiUrl(path) {
   if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -30,7 +32,7 @@ function apiUrl(path) {
 }
 
 function redirectToSiteGate() {
-  const from = encodeURIComponent(`${location.pathname}${location.search || ""}`);
+  const from = encodeURIComponent(`${location.pathname}${location.search}`);
   location.assign(apiUrl(`/gate.html?from=${from}`));
 }
 
@@ -75,7 +77,7 @@ function initToneControls() {
 
 async function loadSiteTitle() {
   try {
-    const response = await fetch(apiUrl("/api/settings"), { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch(apiUrl("/api/settings"), apiFetchInit);
     if (response.status === 401) {
       redirectToSiteGate();
       return;
@@ -253,7 +255,7 @@ async function loadLinks() {
   grid.innerHTML = '<div class="empty">加载中...</div>';
 
   try {
-    const response = await fetch(apiUrl("/api/links"), { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch(apiUrl("/api/links"), apiFetchInit);
     if (response.status === 401) {
       redirectToSiteGate();
       return;
@@ -273,24 +275,29 @@ async function loadLinks() {
 
     renderCategories();
     renderLinks();
-  } catch (error) {
+  } catch {
     grid.innerHTML = '<div class="empty">加载失败，请稍后重试。</div>';
   }
 }
 
 async function initSiteAuthUi() {
   try {
-    const response = await fetch(apiUrl("/api/site-auth/status"), { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch(apiUrl("/api/site-auth/status"), apiFetchInit);
     if (!response.ok) return;
     const raw = await response.json();
     if (!raw || !raw.enabled || !raw.loggedIn) return;
     const btn = document.getElementById("siteLogout");
-    if (!btn) return;
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = "1";
     btn.hidden = false;
-    btn.addEventListener("click", async () => {
-      await fetch(apiUrl("/api/site-auth/logout"), { method: "POST", credentials: "same-origin" });
-      location.assign(apiUrl("/gate.html"));
-    });
+    btn.addEventListener(
+      "click",
+      async () => {
+        await fetch(apiUrl("/api/site-auth/logout"), { ...apiFetchInit, method: "POST" });
+        location.assign(apiUrl("/gate.html"));
+      },
+      { once: true }
+    );
   } catch {
     // ignore
   }

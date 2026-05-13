@@ -208,8 +208,16 @@
         const p = path.startsWith("/") ? path : `/${path}`;
         const key = "/admin/";
         const i = location.pathname.indexOf(key);
-        const prefix = i > 0 ? location.pathname.slice(0, i) : "";
-        return prefix + p;
+        if (i >= 0) return location.pathname.slice(0, i) + p;
+        if (location.pathname.endsWith(".html")) {
+          const last = location.pathname.lastIndexOf("/");
+          if (last >= 0) return location.pathname.slice(0, last) + p;
+        }
+        const norm = location.pathname.replace(/\/+$/, "") || "/";
+        if (norm !== "/" && p.startsWith("/api/")) {
+          return norm + p;
+        }
+        return p;
       }
 
       const settingsForm = document.getElementById("settingsForm");
@@ -289,8 +297,8 @@
       async function ensureAuth() {
         try {
           await request("/api/auth/check");
-        } catch (error) {
-          location.href = "/admin/login.html";
+        } catch {
+          location.href = apiUrl("/admin/login.html");
         }
       }
 
@@ -390,7 +398,7 @@
       document.getElementById("resetBtn").addEventListener("click", clearForm);
       document.getElementById("logoutBtn").addEventListener("click", async () => {
         await request("/api/auth/logout", { method: "POST" });
-        location.href = "/admin/login.html";
+        location.href = apiUrl("/admin/login.html");
       });
 
       (async function init() {
