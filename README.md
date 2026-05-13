@@ -2,16 +2,17 @@
 
 ## 快速部署（推荐）
 
-1. 修改 `compose.yml` 中的密码：
+1. 在项目根目录创建 **`.env`**（已加入 `.gitignore`，不会被 `git pull` 覆盖）：
 
-```yml
-ADMIN_PASSWORD: "后台管理密码"
-# 公网部署时建议取消注释并设置（与上面独立；留空则任何人可打开主页）
-SITE_PASSWORD: "站点访问密码"
+```bash
+cp .env.example .env
+# 编辑 .env，填写 ADMIN_PASSWORD；公网建议再设置 SITE_PASSWORD
 ```
 
 - **`ADMIN_PASSWORD`**：仅用于 `/admin` 后台管理接口与页面。
-- **`SITE_PASSWORD`**：启用后，访问主页与公开接口 `/api/settings`、`/api/links` 需先在 `/gate.html` 通过验证；Cookie 为 `site_token`（HttpOnly），与后台 `admin_token` 互不干扰。
+- **`SITE_PASSWORD`**：启用后，访问主页与公开接口 `/api/settings`、`/api/links` 需先在 `/gate.html` 通过验证；Cookie 为 `site_token`（HttpOnly），与后台 `admin_token` 互不干扰。不填或留空表示不启用站点门禁。
+
+`compose.yml` 只引用变量，**不要在服务器上改 `compose.yml` 存密码**，避免与仓库冲突。
 
 2. 启动服务：
 
@@ -42,4 +43,19 @@ docker compose down
 
 - 当前使用 `./data.json:/app/data.json` 挂载，数据可持久化。
 - 未设置 `SITE_PASSWORD` 时，直接打开 `/gate.html` 会重定向回首页。
+
+## 服务器上 `git pull` 报 compose.yml 冲突时
+
+说明远程已更新，但你本地改过 `compose.yml`。按下面做一次即可：
+
+```bash
+cd /opt/HomePage
+git checkout -- compose.yml
+git pull
+cp .env.example .env   # 若还没有 .env
+nano .env             # 填好密码后保存
+docker compose up -d --build
+```
+
+若你希望保留旧版 `compose.yml` 里的改动，可先 `git stash push -- compose.yml` 再 `git pull`，再手动对照合并到新的 `compose.yml` / `.env`。
 

@@ -6,8 +6,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      ADMIN_PASSWORD: "123456"
-      # 公网部署时建议设置：与后台密码独立；留空则不校验，任何人可打开主页
-      # SITE_PASSWORD: "请改成强密码"
+      # 密码从项目目录下的 .env 读取（Compose 自动加载）；勿把 .env 提交到 Git
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-123456}
+      SITE_PASSWORD: ${SITE_PASSWORD:-}
     volumes:
       - ./data.json:/app/data.json
