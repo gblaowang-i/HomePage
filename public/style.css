@@ -6,7 +6,7 @@
   --card-radius: calc(var(--grid-frame-radius) - 1px);
   --line-gap: 2px;
   --card-width: 160px;
-  --card-height: 112px;
+  --card-height: 102px;
 
   /* Theme variables */
   --bg-grad: linear-gradient(
@@ -351,14 +351,14 @@ html[data-theme="graywhite"] {
 }
 
 .link-card img {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.28));
 }
 
 .link-card span {
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 14px;
   text-shadow: var(--card-text-shadow);
 }
@@ -404,6 +404,6 @@ html[data-theme="graywhite"] {
 @media (max-width: 400px) {
   :root {
     --card-width: 150px;
-    --card-height: 102px;
+    --card-height: 94px;
   }
 }
